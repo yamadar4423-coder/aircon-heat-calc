@@ -1,0 +1,636 @@
+<title>現場エアコン熱量メーター</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+1:wght@400;500;700;800&family=BIZ+UDPGothic:wght@400;700&family=Roboto+Condensed:wght@600;700&display=swap">
+<style>
+:root{
+  --paper:#e7eaec; --card:#ffffff; --card-2:#f2f5f6; --sunk:#dde3e6;
+  --ink:#101619; --muted:#5d6a71; --faint:#8a969c;
+  --line:#c9d2d6; --line-soft:#e0e6e9;
+  --sens:#b4432c; --sens-bg:#f7e6e1;
+  --lat:#2f5aa8;  --lat-bg:#e2e8f5;
+  --warn:#8a6111; --warn-bg:#f7efdc; --warn-line:#dcc48a;
+  --shadow:0 1px 2px rgba(16,22,25,.07), 0 10px 28px -16px rgba(16,22,25,.3);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0d1216; --card:#151d22; --card-2:#1b252b; --sunk:#0a0f12;
+    --ink:#e3eaee; --muted:#94a2a9; --faint:#71818a;
+    --line:#2a353b; --line-soft:#202a30;
+    --sens:#e8836a; --sens-bg:#2e1c17;
+    --lat:#8aa8e6;  --lat-bg:#161e30;
+    --warn:#d9b45f; --warn-bg:#2a2416; --warn-line:#4d431f;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 28px -16px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0d1216; --card:#151d22; --card-2:#1b252b; --sunk:#0a0f12;
+  --ink:#e3eaee; --muted:#94a2a9; --faint:#71818a;
+  --line:#2a353b; --line-soft:#202a30;
+  --sens:#e8836a; --sens-bg:#2e1c17;
+  --lat:#8aa8e6;  --lat-bg:#161e30;
+  --warn:#d9b45f; --warn-bg:#2a2416; --warn-line:#4d431f;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 28px -16px rgba(0,0,0,.9);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"BIZ UDPGothic","Noto Sans JP",system-ui,-apple-system,sans-serif;
+  font-size:15px; line-height:1.75; -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:560px; margin:0 auto; padding:0 14px calc(104px + env(safe-area-inset-bottom))}
+h1,h2,h3{font-family:"M PLUS 1","BIZ UDPGothic",system-ui,sans-serif}
+
+header.mast{padding:26px 0 16px}
+.eyebrow{
+  font-family:"Roboto Condensed",monospace; font-size:11px; font-weight:700;
+  letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin:0 0 6px;
+}
+h1{font-size:25px; font-weight:800; line-height:1.35; margin:0 0 8px; letter-spacing:.01em; text-wrap:balance}
+.sub{margin:0; font-size:13px; color:var(--muted); line-height:1.7}
+
+section.blk{
+  background:var(--card); border:1px solid var(--line); border-radius:12px;
+  padding:14px 14px 16px; margin-top:12px; box-shadow:var(--shadow);
+}
+.blk > .hd{display:flex; align-items:baseline; gap:9px; margin-bottom:12px}
+.tag{
+  font-family:"Roboto Condensed",monospace; font-size:11px; font-weight:700; letter-spacing:.14em;
+  color:var(--card); background:var(--ink); padding:2px 7px; border-radius:3px; line-height:1.5;
+}
+.blk .ttl{font-family:"M PLUS 1",sans-serif; font-size:15px; font-weight:700}
+.blk .note{font-size:12px; color:var(--faint); margin-left:auto}
+
+.seg{display:flex; background:var(--sunk); border-radius:9px; padding:3px}
+.seg button{
+  flex:1; appearance:none; border:0; background:transparent; color:var(--muted);
+  font-family:"M PLUS 1",sans-serif; font-size:13.5px; font-weight:700; padding:8px 4px;
+  border-radius:7px; cursor:pointer; transition:background .12s, color .12s;
+}
+.seg button[aria-pressed="true"]{background:var(--card); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.seg button:focus-visible{outline:2px solid var(--lat); outline-offset:1px}
+
+.row{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:11px}
+.f{display:flex; flex-direction:column; gap:5px}
+.f > label{font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.02em}
+.inp{display:flex; align-items:center; background:var(--card-2); border:1px solid var(--line); border-radius:9px; padding-right:10px}
+.inp:focus-within{border-color:var(--lat); box-shadow:0 0 0 3px var(--lat-bg)}
+.inp input{
+  flex:1; min-width:0; appearance:none; border:0; background:transparent; color:var(--ink);
+  font-family:"Roboto Condensed",sans-serif; font-variant-numeric:tabular-nums;
+  font-size:22px; font-weight:700; padding:9px 0 9px 11px; outline:none;
+}
+.inp input::-webkit-outer-spin-button,.inp input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+.inp .unit{font-size:12px; font-weight:700; color:var(--faint); white-space:nowrap; padding-left:6px}
+select{
+  width:100%; appearance:none; border:1px solid var(--line); background:var(--card-2); color:var(--ink);
+  font-family:"M PLUS 1",sans-serif; font-size:15px; font-weight:500; padding:10px 32px 10px 11px;
+  border-radius:9px; outline:none;
+}
+select:focus-visible{border-color:var(--lat); box-shadow:0 0 0 3px var(--lat-bg)}
+
+.steps{display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:11px}
+.steps button{
+  appearance:none; border:1px solid var(--line); background:var(--card-2); color:var(--muted);
+  border-radius:9px; padding:7px 2px 6px; cursor:pointer; display:flex; flex-direction:column;
+  align-items:center; gap:1px; font-family:"M PLUS 1",sans-serif;
+  transition:background .12s,border-color .12s,color .12s;
+}
+.steps button b{font-family:"Roboto Condensed",sans-serif; font-size:19px; font-weight:700; line-height:1.1}
+.steps button i{font-style:normal; font-size:10px; font-weight:500; letter-spacing:.02em}
+.steps button[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:var(--card)}
+.steps button:focus-visible{outline:2px solid var(--lat); outline-offset:1px}
+
+.ratio{margin-top:13px; padding-top:13px; border-top:1px dashed var(--line-soft)}
+.ratio .top{display:flex; align-items:baseline; gap:8px}
+.ratio .top label{font-size:12px; font-weight:700; color:var(--muted)}
+.ratio .top .v{margin-left:auto; font-family:"Roboto Condensed",sans-serif; font-size:24px; font-weight:700; font-variant-numeric:tabular-nums}
+.ratio .top .v span{font-size:13px; color:var(--faint)}
+input[type=range]{width:100%; margin:6px 0 0; accent-color:var(--sens); height:26px}
+.ratio .out{
+  display:flex; align-items:baseline; gap:6px; margin-top:4px; padding:8px 11px;
+  background:var(--sunk); border-radius:8px; font-size:12px; color:var(--muted);
+}
+.ratio .out b{font-family:"Roboto Condensed",sans-serif; font-size:20px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums}
+
+.res{background:var(--card); border:1px solid var(--line); border-radius:12px; margin-top:14px; box-shadow:var(--shadow); overflow:hidden}
+.res .top{padding:16px 16px 12px; display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap}
+.res .lab{font-family:"Roboto Condensed",monospace; font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--muted); flex-basis:100%; margin-bottom:-4px}
+.big{font-family:"Roboto Condensed",sans-serif; font-weight:700; font-size:clamp(50px,15vw,72px); line-height:.95; font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+.big-u{font-family:"M PLUS 1",sans-serif; font-size:16px; font-weight:700; color:var(--muted); padding-bottom:6px}
+.pill{margin-left:auto; align-self:center; font-family:"M PLUS 1",sans-serif; font-size:12px; font-weight:700; padding:4px 10px; border-radius:999px; border:1px solid currentColor; line-height:1.6}
+.pill.cool{color:var(--lat); background:var(--lat-bg)}
+.pill.heat{color:var(--sens); background:var(--sens-bg)}
+
+.split{padding:0 16px 14px}
+.bar{display:flex; height:11px; border-radius:6px; overflow:hidden; background:var(--sunk)}
+.bar .s{background:var(--sens); transition:width .18s ease}
+.bar .l{background:var(--lat); transition:width .18s ease}
+.legend{display:flex; gap:14px; margin-top:9px; flex-wrap:wrap; align-items:baseline}
+.legend .it{display:flex; align-items:baseline; gap:6px; font-size:12px}
+.legend .dot{width:9px; height:9px; border-radius:2px; transform:translateY(1px)}
+.legend .k{color:var(--muted); font-weight:700}
+.legend .n{font-family:"Roboto Condensed",sans-serif; font-size:18px; font-weight:700; font-variant-numeric:tabular-nums}
+.legend .u{font-size:11px; color:var(--faint)}
+.shf{margin-left:auto; font-size:12px; color:var(--muted); font-weight:700}
+.shf b{font-family:"Roboto Condensed",sans-serif; font-size:18px; color:var(--ink); font-variant-numeric:tabular-nums}
+
+.detail{border-top:1px solid var(--line-soft); background:var(--card-2)}
+.detail table{width:100%; border-collapse:collapse; font-size:12.5px}
+.detail th,.detail td{padding:7px 16px; text-align:left; border-bottom:1px solid var(--line-soft)}
+.detail th{font-weight:700; color:var(--muted); width:46%}
+.detail td{font-family:"Roboto Condensed",sans-serif; font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; text-align:right}
+.detail td .u{font-family:"BIZ UDPGothic",sans-serif; font-size:11px; font-weight:400; color:var(--faint); margin-left:3px}
+.detail tr:last-child th,.detail tr:last-child td{border-bottom:0}
+
+.msgs{padding:12px 16px 14px; display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--line-soft)}
+.msg{display:flex; gap:8px; font-size:12.5px; line-height:1.65; padding:9px 11px; border-radius:8px; border:1px solid}
+.msg.warn{background:var(--warn-bg); border-color:var(--warn-line); color:var(--warn)}
+.msg.info{background:var(--card-2); border-color:var(--line-soft); color:var(--muted)}
+.msg b{font-weight:700}
+.msg .ic{font-family:"Roboto Condensed",monospace; font-weight:700; flex-shrink:0}
+
+.acts{display:flex; gap:8px; padding:0 16px 16px}
+.acts button{
+  flex:1; appearance:none; border:1px solid var(--line); background:var(--card-2); color:var(--ink);
+  font-family:"M PLUS 1",sans-serif; font-size:13px; font-weight:700; padding:10px; border-radius:9px; cursor:pointer;
+}
+.acts button:active{background:var(--sunk)}
+.acts button:focus-visible{outline:2px solid var(--lat); outline-offset:1px}
+
+.stick{
+  position:fixed; left:0; right:0; bottom:0; z-index:20;
+  background:var(--card); border-top:1px solid var(--line);
+  padding:9px 16px calc(9px + env(safe-area-inset-bottom));
+  display:flex; align-items:baseline; gap:10px;
+  box-shadow:0 -6px 22px -14px rgba(0,0,0,.5);
+  transform:translateY(0); transition:transform .2s ease;
+}
+.stick.off{transform:translateY(115%)}
+.stick .k{font-family:"Roboto Condensed",monospace; font-size:10px; font-weight:700; letter-spacing:.16em; color:var(--muted)}
+.stick .n{font-family:"Roboto Condensed",sans-serif; font-size:29px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums}
+.stick .u{font-size:11px; color:var(--faint); font-weight:700}
+.stick .r{margin-left:auto; text-align:right; font-size:11px; color:var(--muted); line-height:1.5}
+.stick .r b{font-family:"Roboto Condensed",sans-serif; font-size:17px; color:var(--ink); font-variant-numeric:tabular-nums}
+
+details{background:var(--card); border:1px solid var(--line); border-radius:12px; margin-top:12px; overflow:hidden}
+details summary{
+  cursor:pointer; padding:13px 14px; font-family:"M PLUS 1",sans-serif; font-size:13.5px; font-weight:700;
+  list-style:none; display:flex; align-items:center; gap:8px;
+}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:"＋"; margin-left:auto; color:var(--faint); font-weight:400}
+details[open] summary::after{content:"−"}
+details summary:focus-visible{outline:2px solid var(--lat); outline-offset:-2px}
+.dbody{padding:0 14px 15px; font-size:13px; color:var(--muted); line-height:1.85}
+.dbody h4{font-family:"M PLUS 1",sans-serif; font-size:13px; font-weight:700; color:var(--ink); margin:14px 0 4px}
+.dbody h4:first-child{margin-top:0}
+.dbody p{margin:0}
+.dbody ul{margin:4px 0 0; padding-left:1.15em}
+.dbody li{margin-bottom:5px}
+.dbody code{font-family:"Roboto Condensed",monospace; font-size:13px; background:var(--sunk); padding:1px 5px; border-radius:4px; color:var(--ink)}
+.dbody .fx{background:var(--sunk); border-radius:8px; padding:10px 12px; margin:6px 0 0; font-family:"Roboto Condensed",monospace; font-size:13px; color:var(--ink); overflow-x:auto; white-space:nowrap}
+
+footer{margin-top:22px; font-size:11.5px; color:var(--faint); line-height:1.8}
+@media (prefers-reduced-motion:reduce){*{transition:none !important; animation:none !important}}
+@media (max-width:359px){.row{grid-template-columns:1fr}}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">Field Capacity Estimator</p>
+    <h1>エアコン処理熱量 推定</h1>
+    <p class="sub">風量・吸込温湿度・吹出温湿度の5つから、湿り空気のエンタルピー差で実際の処理熱量（全熱・顕熱・潜熱）を求めます。</p>
+  </header>
+
+  <section class="blk">
+    <div class="hd"><span class="tag">MODE</span><span class="ttl">運転モード</span></div>
+    <div class="seg" id="mode" role="group" aria-label="運転モード">
+      <button type="button" data-v="cool" aria-pressed="true">冷房</button>
+      <button type="button" data-v="heat" aria-pressed="false">暖房</button>
+    </div>
+  </section>
+
+  <section class="blk">
+    <div class="hd"><span class="tag">FLOW</span><span class="ttl">風量</span><span class="note">m³/min</span></div>
+    <div class="seg" id="src" role="group" aria-label="風量の入力方法">
+      <button type="button" data-v="model" aria-pressed="true">機種から選ぶ</button>
+      <button type="button" data-v="manual" aria-pressed="false">直接入力</button>
+    </div>
+
+    <div id="pane-model">
+      <div class="f" style="margin-top:11px">
+        <label for="model">機種（ダイキン AX / A シリーズ 壁掛形）</label>
+        <select id="model"></select>
+      </div>
+      <div class="steps" id="steps" role="group" aria-label="リモコン風量段階"></div>
+    </div>
+
+    <div id="pane-manual" hidden>
+      <div class="row" style="grid-template-columns:1fr">
+        <div class="f">
+          <label for="manflow">仕様（カタログ）風量</label>
+          <div class="inp"><input id="manflow" type="number" inputmode="decimal" step="0.1" min="0" value="20.1"><span class="unit">m³/min</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ratio">
+      <div class="top">
+        <label for="ratio">実風量の低下率（フィルタ目詰まり・設置状態など）</label>
+        <div class="v"><span id="ratioV">100</span><span> %</span></div>
+      </div>
+      <input id="ratio" type="range" min="40" max="110" step="1" value="100" aria-label="風量比率">
+      <div class="out">計算に使う実風量 <b id="flowOut">20.1</b> m³/min<span id="flowBase" style="margin-left:auto"></span></div>
+    </div>
+  </section>
+
+  <section class="blk">
+    <div class="hd"><span class="tag">RA</span><span class="ttl">吸込空気（室内側の戻り）</span></div>
+    <div class="row">
+      <div class="f"><label for="t1">乾球温度</label>
+        <div class="inp"><input id="t1" type="number" inputmode="decimal" step="0.1" value="27.0"><span class="unit">℃</span></div></div>
+      <div class="f"><label for="rh1">相対湿度</label>
+        <div class="inp"><input id="rh1" type="number" inputmode="decimal" step="1" min="0" max="100" value="50"><span class="unit">%RH</span></div></div>
+    </div>
+  </section>
+
+  <section class="blk">
+    <div class="hd"><span class="tag">SA</span><span class="ttl">吹出空気（吹出口）</span></div>
+    <div class="row">
+      <div class="f"><label for="t2">乾球温度</label>
+        <div class="inp"><input id="t2" type="number" inputmode="decimal" step="0.1" value="15.0"><span class="unit">℃</span></div></div>
+      <div class="f"><label for="rh2">相対湿度</label>
+        <div class="inp"><input id="rh2" type="number" inputmode="decimal" step="1" min="0" max="100" value="95"><span class="unit">%RH</span></div></div>
+    </div>
+  </section>
+
+  <div class="res" id="res">
+    <div class="top">
+      <span class="lab" id="resLab">TOTAL COOLING／全熱処理量</span>
+      <span class="big" id="qTotal">—</span><span class="big-u">kW</span>
+      <span class="pill cool" id="modePill">冷房</span>
+    </div>
+    <div class="split">
+      <div class="bar"><div class="s" id="barS" style="width:70%"></div><div class="l" id="barL" style="width:30%"></div></div>
+      <div class="legend">
+        <div class="it"><span class="dot" style="background:var(--sens)"></span><span class="k">顕熱</span><span class="n" id="qS">—</span><span class="u">kW</span></div>
+        <div class="it"><span class="dot" style="background:var(--lat)"></span><span class="k">潜熱</span><span class="n" id="qL">—</span><span class="u">kW</span></div>
+        <div class="shf">SHF <b id="shf">—</b></div>
+      </div>
+    </div>
+    <div class="detail"><table id="tbl"></table></div>
+    <div class="msgs" id="msgs"></div>
+    <div class="acts">
+      <button type="button" id="copy">結果をコピー</button>
+      <button type="button" id="reset">初期値に戻す</button>
+    </div>
+  </div>
+
+  <details>
+    <summary>詳細設定（大気圧・風量の状態基準）</summary>
+    <div class="dbody">
+      <div class="row" style="margin-top:0">
+        <div class="f"><label for="pres">大気圧</label>
+          <div class="inp"><input id="pres" type="number" inputmode="decimal" step="0.1" value="101.3"><span class="unit">kPa</span></div></div>
+        <div class="f"><label for="basis">風量の状態基準</label>
+          <select id="basis">
+            <option value="sa">吹出（SA）基準</option>
+            <option value="ra">吸込（RA）基準</option>
+          </select></div>
+      </div>
+      <h4>状態基準とは</h4>
+      <p>風量 m³/min は「体積」なので、質量流量に直すには空気の比容積が必要です。壁掛形はクロスフローファンが熱交換器の下流にあるため、既定は<b>吹出（SA）基準</b>にしています。テキストの標準的な扱いに揃えたい場合は吸込（RA）基準を選んでください。冷房では両者で結果が3〜5%変わります。</p>
+      <h4>標高による大気圧の目安</h4>
+      <p>0m＝101.3 ／ 500m＝95.5 ／ 1000m＝89.9 kPa。気圧が低いほど同じ風量でも空気の質量が減り、処理熱量は下がります。</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>計算のしくみ（式と考え方）</summary>
+    <div class="dbody">
+      <h4>1. 温度と湿度から湿り空気の状態を出す</h4>
+      <p>飽和水蒸気圧 <code>pws(t)</code> はASHRAEの式（水面上／氷面上）で求め、水蒸気分圧 <code>pw = RH × pws</code> から絶対湿度・比エンタルピー・比容積を計算します。</p>
+      <div class="fx">x = 0.621945 × pw / (P − pw)　[kg/kg(DA)]</div>
+      <div class="fx">h = 1.006·t + x·(2501 + 1.86·t)　[kJ/kg(DA)]</div>
+      <div class="fx">v = 287.042·(t+273.15)·(1+1.6079·x) / P　[m³/kg(DA)]</div>
+      <h4>2. 風量を乾き空気の質量流量に直す</h4>
+      <div class="fx">G = (風量 × 低下率 ÷ 60) ÷ v　[kg(DA)/s]</div>
+      <h4>3. 全熱・顕熱・潜熱に分ける</h4>
+      <p>全熱はエンタルピー差そのもの。顕熱と潜熱は、足すと必ず全熱に一致する形に分解しています。</p>
+      <div class="fx">Q全 = G × (h₁ − h₂)</div>
+      <div class="fx">Q顕 = G × (1.006 + 1.86·x₁) × (t₁ − t₂)</div>
+      <div class="fx">Q潜 = G × (2501 + 1.86·t₂) × (x₁ − x₂)</div>
+      <div class="fx">SHF = Q顕 ÷ Q全　　除湿量 = G × (x₁ − x₂) × 3600</div>
+      <h4>4. この推定の限界</h4>
+      <ul>
+        <li><b>風量が最大の不確かさです。</b>仕様表の値は所定条件のもので、実機は目詰まりや設置状態で下がります。処理熱量は風量にほぼ比例するので、低下率を振って幅を見てください（−10%なら結果も約−10%）。</li>
+        <li><b>吹出湿度は誤差が乗りやすい。</b>冷房の吹出は飽和近く（RH 95%前後）で、湿度計の1%RHの差が潜熱に直結します。全熱より顕熱の方が信頼できます。</li>
+        <li><b>1点測定は代表点になりません。</b>吹出口は位置で温度がばらつくので、数点の平均値を入れてください。</li>
+        <li>ドレン水が持ち出す熱は無視しています（実用上0.5%未満）。</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>風量段階の読み方（リモコン表示との対応）</summary>
+    <div class="dbody">
+      <ul>
+        <li>仕様表に載っているのは <b>強(H)・弱(M)・微(L)</b> の3点だけで、それぞれリモコンの <b>5・3・1</b> に対応します。</li>
+        <li><b>2 と 4 は非公表</b>のため、隣り合う段の中間値を推定として使っています（ボタンに「推定」と表示）。</li>
+        <li>「自動」「しずか」は風量値が公表されていません。自動運転中の測定は実風量が分からないため、直接入力を推奨します。</li>
+        <li>除湿系モードは風量「自動」固定、パワフル運転中は風量変更不可です。</li>
+      </ul>
+    </div>
+  </details>
+
+  <footer>
+    風量データ出典：ダイキン工業 仕様表（各機種PDF）／取扱説明書 AX・Aシリーズ 3P814678-1 P.16。風量は室内ユニットの値（m³/min）。<br>
+    空気の物性は ASHRAE Handbook Fundamentals の湿り空気式に基づきます。本ツールは現場での目安を出すためのもので、メーカーの性能保証値ではありません。
+  </footer>
+</div>
+
+<div class="stick off" id="stick">
+  <div>
+    <div class="k">全熱</div>
+    <div><span class="n" id="sN">—</span> <span class="u">kW</span></div>
+  </div>
+  <div class="r">顕熱 <b id="sS">—</b> ／ 潜熱 <b id="sL">—</b> ／ SHF <b id="sF">—</b></div>
+</div>
+
+<script>
+"use strict";
+/* ---------- 風量データ：ダイキン AX/A シリーズ 壁掛形（[冷房, 暖房] m³/min） ---------- */
+var DATA=[
+ {m:"S40ZTAXP",y:"旧",kw:4.0,h:[19.8,22.7],d:[12.6,12.9],l:[11.3,9.7]},
+ {m:"S403ATAP",y:"2023",kw:4.0,h:[19.8,22.7],d:[12.6,12.9],l:[11.3,9.7]},
+ {m:"S404ATAP",y:"2024",kw:4.0,h:[20.1,23.0],d:[12.8,13.1],l:[11.5,9.9]},
+ {m:"S405ATAP",y:"2025",kw:4.0,h:[20.1,23.0],d:[12.8,13.1],l:[11.5,9.9]},
+ {m:"S406ATAP",y:"2026",kw:4.0,h:[20.1,23.0],d:[12.8,13.1],l:[11.5,9.9]},
+ {m:"S563ATAP",y:"2023",kw:5.6,h:[20.0,23.1],d:[12.6,12.9],l:[11.3,9.9]},
+ {m:"S564ATAP",y:"2024",kw:5.6,h:[20.2,23.4],d:[12.8,13.1],l:[11.5,10.1]},
+ {m:"S565ATAP",y:"2025",kw:5.6,h:[20.2,23.4],d:[12.8,13.1],l:[11.5,10.1]},
+ {m:"S566ATAP",y:"2026",kw:5.6,h:[20.2,23.4],d:[12.8,13.1],l:[11.5,10.1]},
+ {m:"S633ATAP",y:"2023",kw:6.3,h:[20.1,23.1],d:[12.6,13.3],l:[11.7,10.1]},
+ {m:"S634ATAP",y:"2024",kw:6.3,h:[20.4,23.4],d:[12.8,13.5],l:[11.9,10.3]},
+ {m:"S635ATAP",y:"2025",kw:6.3,h:[20.4,23.4],d:[12.8,13.5],l:[11.9,10.3]},
+ {m:"S636ATAP",y:"2026",kw:6.3,h:[20.4,23.4],d:[12.8,13.5],l:[11.9,10.3]},
+ {m:"S713ATAP",y:"2023",kw:7.1,h:[20.5,24.4],d:[14.0,14.7],l:[12.1,11.3]},
+ {m:"S714ATAP",y:"2024",kw:7.1,h:[20.3,24.2],d:[14.2,14.9],l:[12.3,11.5]},
+ {m:"S715ATAP",y:"2025",kw:7.1,h:[20.3,24.0],d:[14.2,14.9],l:[12.3,11.5]},
+ {m:"S716ATAP",y:"2026",kw:7.1,h:[20.3,24.0],d:[14.2,14.9],l:[12.3,11.5]},
+ {m:"S803ATAP",y:"2023",kw:8.0,h:[21.4,23.7],d:[14.4,15.7],l:[12.7,12.7]},
+ {m:"S804ATAP",y:"2024",kw:8.0,h:[21.1,23.4],d:[14.6,15.9],l:[12.9,12.9]},
+ {m:"S805ATAP",y:"2025",kw:8.0,h:[21.1,23.4],d:[14.6,15.9],l:[12.9,12.9]},
+ {m:"S806ATAP",y:"2026",kw:8.0,h:[21.1,23.4],d:[14.6,15.9],l:[12.9,12.9]},
+ {m:"S903ATAP",y:"2023",kw:9.0,h:[21.9,25.2],d:[16.8,18.0],l:[14.7,14.3]},
+ {m:"S904ATAP",y:"2024",kw:9.0,h:[22.1,24.8],d:[17.1,18.3],l:[14.9,14.5]},
+ {m:"S905ATAP",y:"2025",kw:9.0,h:[22.1,24.8],d:[17.1,18.3],l:[14.9,14.5]},
+ {m:"S906ATAP",y:"2026",kw:9.0,h:[22.1,24.8],d:[17.1,18.3],l:[14.9,14.5]}
+];
+
+/* ---------- 湿り空気の物性（ASHRAE Fundamentals） ---------- */
+function pws(t){                                  /* 飽和水蒸気圧 [Pa] */
+  var T=t+273.15;
+  if(t<0){
+    return Math.exp(-5.6745359e3/T+6.3925247-9.677843e-3*T+6.2215701e-7*T*T
+      +2.0747825e-9*T*T*T-9.484024e-13*T*T*T*T+4.1635019*Math.log(T));
+  }
+  return Math.exp(-5.8002206e3/T+1.3914993-4.8640239e-2*T+4.1764768e-5*T*T
+    -1.4452093e-8*T*T*T+6.5459673*Math.log(T));
+}
+function dewpoint(pw,P){                          /* 露点 [℃]（pwsを二分法で逆算） */
+  if(!(pw>0)) return NaN;
+  var lo=-70, hi=95, i, m;
+  if(pws(hi)<pw) return NaN;
+  for(i=0;i<80;i++){ m=(lo+hi)/2; if(pws(m)<pw){ lo=m; } else { hi=m; } }
+  return (lo+hi)/2;
+}
+function wetbulb(t,x,P){                          /* 湿球温度 [℃]（二分法） */
+  function ws(tw){ var p=Math.min(pws(tw),P*0.999); return 0.621945*p/(P-p); }
+  function fx(tw){
+    return ((2501-2.326*tw)*ws(tw)-1.006*(t-tw))/(2501+1.86*t-4.186*tw)-x;
+  }
+  var lo=-70, hi=t, i, m;
+  if(fx(lo)>0) return NaN;
+  for(i=0;i<80;i++){ m=(lo+hi)/2; if(fx(m)<0){ lo=m; } else { hi=m; } }
+  return (lo+hi)/2;
+}
+function state(t,rh,P){                           /* P [Pa] */
+  var pw=Math.min(Math.max(rh,0)/100*pws(t), P*0.999);
+  var x=0.621945*pw/(P-pw);
+  return{ t:t, rh:rh, pw:pw, x:x,
+    h:1.006*t+x*(2501+1.86*t),
+    v:287.042*(t+273.15)*(1+1.607858*x)/P,
+    td:dewpoint(pw,P), tw:wetbulb(t,x,P) };
+}
+
+/* ---------- 状態 ---------- */
+function $(id){ return document.getElementById(id); }
+var DEF={mode:"cool", src:"model", model:"S406ATAP", step:3, manflow:12.8,
+         ratio:100, t1:27, rh1:50, t2:15, rh2:95, pres:101.3, basis:"sa"};
+var S={}; for(var k in DEF) S[k]=DEF[k];
+var KEY="acheat.v1";
+try{ var saved=JSON.parse(localStorage.getItem(KEY)||"null");
+     if(saved&&typeof saved==="object"){ for(var j in DEF) if(j in saved) S[j]=saved[j]; } }catch(e){}
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} }
+
+function r1(n){ return Math.round(n*10)/10; }
+function f(n,d){ return isFinite(n)?n.toFixed(d===undefined?2:d):"—"; }
+
+/* ---------- 機種セレクト ---------- */
+(function(){
+  var sel=$("model"), caps=[], i, c, list, o, g;
+  for(i=0;i<DATA.length;i++) if(caps.indexOf(DATA[i].kw)<0) caps.push(DATA[i].kw);
+  caps.sort(function(a,b){ return a-b; });
+  for(i=0;i<caps.length;i++){
+    c=caps[i];
+    g=document.createElement("optgroup"); g.label=c.toFixed(1)+" kW クラス";
+    list=DATA.filter(function(d){ return d.kw===c; });
+    list.forEach(function(d){
+      o=document.createElement("option"); o.value=d.m; o.textContent=d.m+"（"+d.y+"）"; g.appendChild(o);
+    });
+    sel.appendChild(g);
+  }
+})();
+
+function modelRow(){
+  for(var i=0;i<DATA.length;i++) if(DATA[i].m===S.model) return DATA[i];
+  return DATA[DATA.length-1];
+}
+function stepFlows(){                              /* [1..5] の風量 [m³/min] */
+  var d=modelRow(), i=S.mode==="cool"?0:1, L=d.l[i], M=d.d[i], H=d.h[i];
+  return[L, r1((L+M)/2), M, r1((M+H)/2), H];
+}
+function baseFlow(){ return S.src==="model" ? stepFlows()[S.step-1] : S.manflow; }
+
+/* ---------- 段階ボタン ---------- */
+var STEPNAME=["微 L","推定","弱 M","推定","強 H"];
+function drawSteps(){
+  var box=$("steps"), fl=stepFlows(), i, b;
+  box.replaceChildren();
+  for(i=0;i<5;i++){
+    b=document.createElement("button");
+    b.type="button";
+    b.setAttribute("aria-pressed", String(S.step===i+1));
+    b.innerHTML="<b>"+(i+1)+"</b><i>"+STEPNAME[i]+"</i><i style='opacity:.7'>"+fl[i].toFixed(1)+"</i>";
+    (function(n){ b.onclick=function(){ S.step=n; save(); drawSteps(); calc(); }; })(i+1);
+    box.appendChild(b);
+  }
+}
+
+/* ---------- セグメント ---------- */
+function seg(id, key, after){
+  var box=$(id), bs=box.querySelectorAll("button"), i;
+  for(i=0;i<bs.length;i++){
+    (function(b){
+      b.setAttribute("aria-pressed", String(S[key]===b.dataset.v));
+      b.onclick=function(){ S[key]=b.dataset.v; save(); seg(id,key,after); if(after) after(); calc(); };
+    })(bs[i]);
+  }
+}
+
+function bindNum(id, key){
+  var el=$(id); el.value=S[key];
+  el.addEventListener("input", function(){
+    var v=parseFloat(el.value);
+    if(isFinite(v)){ S[key]=v; save(); calc(); }
+  });
+}
+
+/* ---------- 計算・描画 ---------- */
+function calc(){
+  var P=S.pres*1000;
+  var flow=baseFlow()*S.ratio/100;                 /* m³/min */
+  $("flowOut").textContent=f(flow,1);
+  $("flowBase").textContent=(S.src==="model"?"仕様 ":"入力 ")+baseFlow().toFixed(1)+" m³/min";
+  $("ratioV").textContent=S.ratio;
+
+  var cool=S.mode==="cool";
+  $("modePill").textContent=cool?"冷房":"暖房";
+  $("modePill").className="pill "+(cool?"cool":"heat");
+  $("resLab").textContent=(cool?"TOTAL COOLING":"TOTAL HEATING")+"／全熱処理量";
+
+  var a=state(S.t1,S.rh1,P), b=state(S.t2,S.rh2,P);
+  var v=(S.basis==="sa"?b.v:a.v);
+  var G=(flow/60)/v;                               /* kg(DA)/s */
+  var sgn=cool?1:-1;
+  var QT=G*(a.h-b.h)*sgn;
+  var QS=G*(1.006+1.86*a.x)*(a.t-b.t)*sgn;
+  var QL=G*(2501+1.86*b.t)*(a.x-b.x)*sgn;
+  var drain=G*(a.x-b.x)*3600;                      /* kg/h ≒ L/h */
+  var shf=Math.abs(QT)>0.05?QS/QT:NaN;   /* 全熱がほぼ0のときSHFは意味を持たない */
+
+  $("qTotal").textContent=f(QT,2);
+  $("qS").textContent=f(QS,2);
+  $("qL").textContent=f(QL,2);
+  $("shf").textContent=isFinite(shf)?f(shf,2):"—";
+  var ps=Math.max(0,Math.min(100, QT>0?QS/QT*100:(QS>0?100:0)));
+  $("barS").style.width=ps+"%"; $("barL").style.width=(100-ps)+"%";
+  $("sN").textContent=f(QT,2); $("sS").textContent=f(QS,2);
+  $("sL").textContent=f(QL,2); $("sF").textContent=isFinite(shf)?f(shf,2):"—";
+
+  var d=modelRow();
+  var rated=(S.src==="model"&&cool)?d.kw:null;
+  var rows=[
+    ["実風量（低下率反映）", f(flow,1), "m³/min"],
+    ["乾き空気の質量流量", f(G*3600,0), "kg/h"],
+    ["比エンタルピー　吸込 h₁", f(a.h,1), "kJ/kg(DA)"],
+    ["比エンタルピー　吹出 h₂", f(b.h,1), "kJ/kg(DA)"],
+    ["エンタルピー差 Δh", f(Math.abs(a.h-b.h),1), "kJ/kg(DA)"],
+    ["絶対湿度　吸込 x₁", f(a.x*1000,1), "g/kg(DA)"],
+    ["絶対湿度　吹出 x₂", f(b.x*1000,1), "g/kg(DA)"],
+    ["露点　吸込 / 吹出", f(a.td,1)+" / "+f(b.td,1), "℃"],
+    ["湿球　吸込 / 吹出", f(a.tw,1)+" / "+f(b.tw,1), "℃"],
+    ["温度差 Δt", f(Math.abs(a.t-b.t),1), "K"],
+    [cool?"除湿量（ドレン水）":"加湿／除湿量", f(Math.abs(drain),2), "L/h"]
+  ];
+  if(rated) rows.push(["定格冷房能力 "+rated.toFixed(1)+"kW に対して", f(QT/rated*100,0), "%"]);
+  $("tbl").innerHTML=rows.map(function(r){
+    return "<tr><th>"+r[0]+"</th><td>"+r[1]+"<span class='u'>"+r[2]+"</span></td></tr>";
+  }).join("");
+
+  /* 判定メッセージ */
+  var M=[];
+  if(S.rh1<0||S.rh1>100||S.rh2<0||S.rh2>100)
+    M.push(["warn","相対湿度は 0〜100 %RH の範囲で入力してください。"]);
+  if(cool&&b.t>=a.t)
+    M.push(["warn","<b>冷房なのに吹出温度が吸込以上です。</b>モードの選択か、温度の入れ違いを確認してください。"]);
+  if(!cool&&b.t<=a.t)
+    M.push(["warn","<b>暖房なのに吹出温度が吸込以下です。</b>モードの選択か、温度の入れ違いを確認してください。"]);
+  if(Math.abs(a.t-b.t)<3)
+    M.push(["warn","温度差が "+f(Math.abs(a.t-b.t),1)+" K しかありません。測定誤差の影響が大きく出ます。サーモオフや除霜運転中でないか確認してください。"]);
+  if(cool&&S.rh2>=98)
+    M.push(["info","吹出湿度が飽和に近い設定です。実測の吹出は結露水で湿度計が振り切れやすく、潜熱の精度は低めに見てください。"]);
+  if(cool&&b.x>a.x)
+    M.push(["warn","<b>吹出の絶対湿度が吸込より高くなっています。</b>冷房では通常ありえません。湿度の測定値を確認してください（潜熱がマイナス表示になります）。"]);
+  if(!cool&&Math.abs(a.x-b.x)*1000>0.6)
+    M.push(["info","暖房で絶対湿度が "+f(Math.abs(a.x-b.x)*1000,1)+" g/kg 変化しています。加湿機能がなければ湿度計の誤差です。顕熱を主に見てください。"]);
+  if(S.ratio!==100)
+    M.push(["info","風量を仕様値の <b>"+S.ratio+"%</b> として計算しています。処理熱量は風量にほぼ比例するので、この設定がそのまま結果の幅になります。"]);
+  if(S.src==="model"&&(S.step===2||S.step===4))
+    M.push(["info","風量段階 "+S.step+" はメーカー非公表のため、隣の段の中間値で推定しています。"]);
+  if(rated&&QT/rated>1.25)
+    M.push(["info","定格の "+f(QT/rated*100,0)+"% と出ています。外気条件が良ければ定格超えは起こりますが、風量の設定値が実態より大きい可能性も確認してください。"]);
+  $("msgs").innerHTML = M.length
+    ? M.map(function(m){
+        return '<div class="msg '+m[0]+'"><span class="ic">'+(m[0]==="warn"?"！":"i")+'</span><span>'+m[1]+'</span></div>';
+      }).join("")
+    : '<div class="msg info"><span class="ic">✓</span><span>入力値に矛盾はありません。'
+      +(cool?"冷房では顕熱の方が潜熱より精度が高い点だけ意識してください。":"暖房は潜熱がほぼ出ないので、顕熱＝全熱として見てください。")
+      +'</span></div>';
+
+  window.__txt=[
+    "エアコン処理熱量 推定（"+(cool?"冷房":"暖房")+"）",
+    (S.src==="model" ? "機種 "+S.model+"（"+d.y+"・"+d.kw.toFixed(1)+"kWクラス）／風量段階 "+S.step : "風量 直接入力"),
+    "風量 "+baseFlow().toFixed(1)+" m³/min × "+S.ratio+"% = "+f(flow,1)+" m³/min",
+    "吸込 "+f(S.t1,1)+"℃ "+S.rh1+"%RH（x="+f(a.x*1000,1)+" g/kg, h="+f(a.h,1)+" kJ/kg）",
+    "吹出 "+f(S.t2,1)+"℃ "+S.rh2+"%RH（x="+f(b.x*1000,1)+" g/kg, h="+f(b.h,1)+" kJ/kg）",
+    "全熱 "+f(QT,2)+" kW ／ 顕熱 "+f(QS,2)+" kW ／ 潜熱 "+f(QL,2)+" kW ／ SHF "+(isFinite(shf)?f(shf,2):"—"),
+    (cool?"除湿量 ":"加湿・除湿量 ")+f(Math.abs(drain),2)+" L/h",
+    "条件：大気圧 "+f(S.pres,1)+" kPa ／ "+(S.basis==="sa"?"吹出":"吸込")+"基準"
+  ].join("\n");
+}
+
+/* ---------- 初期化 ---------- */
+function syncPanes(){
+  $("pane-model").hidden = S.src!=="model";
+  $("pane-manual").hidden = S.src!=="manual";
+}
+seg("mode","mode",drawSteps);
+seg("src","src",syncPanes);
+syncPanes();
+$("model").value=S.model;
+$("model").addEventListener("change", function(){ S.model=$("model").value; save(); drawSteps(); calc(); });
+$("basis").value=S.basis;
+$("basis").addEventListener("change", function(){ S.basis=$("basis").value; save(); calc(); });
+$("ratio").value=S.ratio;
+$("ratio").addEventListener("input", function(){ S.ratio=parseInt($("ratio").value,10); save(); calc(); });
+["manflow","t1","rh1","t2","rh2","pres"].forEach(function(k){ bindNum(k,k); });
+drawSteps();
+calc();
+
+$("copy").addEventListener("click", function(e){
+  var b=e.currentTarget, old=b.textContent;
+  function done(msg){ b.textContent=msg; setTimeout(function(){ b.textContent=old; },1600); }
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(window.__txt).then(function(){ done("コピーしました"); },
+      function(){ done("コピーできませんでした"); });
+  }else{ done("コピーに対応していません"); }
+});
+$("reset").addEventListener("click", function(){
+  for(var k in DEF) S[k]=DEF[k];
+  save();
+  ["manflow","t1","rh1","t2","rh2","pres"].forEach(function(k){ $(k).value=S[k]; });
+  $("model").value=S.model; $("basis").value=S.basis; $("ratio").value=S.ratio;
+  seg("mode","mode",drawSteps); seg("src","src",syncPanes);
+  syncPanes(); drawSteps(); calc();
+});
+
+/* 結果カードが画面に入っている間は下部バーを隠す */
+if("IntersectionObserver" in window){
+  var st=$("stick");
+  new IntersectionObserver(function(es){ st.classList.toggle("off", es[0].isIntersecting); },{threshold:.35}).observe($("res"));
+}else{
+  $("stick").classList.remove("off");
+}
+</script>
