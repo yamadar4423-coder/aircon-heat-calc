@@ -1,4 +1,16 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>現場エアコン熱量メーター</title>
+<meta name="description" content="風量と吸込・吹出の温湿度から、エアコンが実際に処理している全熱・顕熱・潜熱を推定する現場用ツール。">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#e7eaec">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d1216">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="熱量メーター">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png" type="image/png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+1:wght@400;500;700;800&family=BIZ+UDPGothic:wght@400;700&family=Roboto+Condensed:wght@600;700&display=swap">
 <style>
 :root{
@@ -109,6 +121,7 @@ input[type=range]{width:100%; margin:6px 0 0; accent-color:var(--sens); height:2
 .ratio .out{
   display:flex; align-items:baseline; gap:6px; margin-top:4px; padding:8px 11px;
   background:var(--sunk); border-radius:8px; font-size:12px; color:var(--muted);
+  flex-wrap:wrap; white-space:nowrap;
 }
 .ratio .out b{font-family:"Roboto Condensed",sans-serif; font-size:20px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums}
 
@@ -156,6 +169,62 @@ input[type=range]{width:100%; margin:6px 0 0; accent-color:var(--sens); height:2
 }
 .acts button:active{background:var(--sunk)}
 .acts button:focus-visible{outline:2px solid var(--lat); outline-offset:1px}
+
+/* ---- 計算履歴 ---- */
+.saverow{display:flex; gap:8px; align-items:stretch}
+.saverow .inp{flex:1}
+.saverow .inp input{
+  font-family:"BIZ UDPGothic",sans-serif; font-size:15px; font-weight:400; padding:10px 0 10px 11px;
+}
+.saverow > button{
+  flex-shrink:0; appearance:none; border:1px solid var(--ink); background:var(--ink); color:var(--card);
+  font-family:"M PLUS 1",sans-serif; font-size:13.5px; font-weight:700; padding:0 18px; border-radius:9px; cursor:pointer;
+}
+.saverow > button:active{opacity:.75}
+.saverow > button:focus-visible{outline:2px solid var(--lat); outline-offset:2px}
+
+ul.log{list-style:none; margin:12px 0 0; padding:0; display:flex; flex-direction:column; gap:7px}
+.ent{display:flex; gap:6px; align-items:stretch}
+.entMain{
+  flex:1; min-width:0; text-align:left; appearance:none; cursor:pointer;
+  border:1px solid var(--line); background:var(--card-2); color:var(--ink);
+  border-radius:9px; padding:8px 11px; font-family:"BIZ UDPGothic",sans-serif;
+  display:flex; flex-direction:column; gap:2px; transition:background .12s,border-color .12s;
+}
+.entMain:hover{background:var(--sunk)}
+.entMain:focus-visible{outline:2px solid var(--lat); outline-offset:1px}
+.entTop{display:flex; align-items:baseline; gap:8px; font-size:11.5px; color:var(--muted)}
+.entLab{font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.entTime{margin-left:auto; flex-shrink:0; font-family:"Roboto Condensed",sans-serif; font-variant-numeric:tabular-nums}
+.entMid{display:flex; align-items:baseline; gap:7px}
+.entQ{font-family:"Roboto Condensed",sans-serif; font-size:24px; font-weight:700; line-height:1.1; font-variant-numeric:tabular-nums}
+.entU{font-size:11px; color:var(--faint); font-weight:700}
+.entShf{font-size:11.5px; color:var(--muted); font-family:"Roboto Condensed",sans-serif; font-variant-numeric:tabular-nums}
+.entMode{
+  margin-left:auto; font-family:"M PLUS 1",sans-serif; font-size:10.5px; font-weight:700;
+  padding:1px 8px; border-radius:999px; line-height:1.7;
+}
+.entMode.cool{color:var(--lat); background:var(--lat-bg)}
+.entMode.heat{color:var(--sens); background:var(--sens-bg)}
+.entSub{font-size:11px; color:var(--faint); line-height:1.6; overflow-wrap:anywhere}
+.entDel{
+  flex-shrink:0; width:38px; appearance:none; cursor:pointer;
+  border:1px solid var(--line); background:var(--card-2); color:var(--faint);
+  border-radius:9px; font-size:17px; line-height:1; font-family:"M PLUS 1",sans-serif;
+}
+.entDel:hover{color:var(--sens); border-color:var(--sens)}
+.entDel:focus-visible{outline:2px solid var(--lat); outline-offset:1px}
+.logEmpty{margin:12px 0 0; padding:14px 12px; background:var(--card-2); border:1px dashed var(--line);
+  border-radius:9px; font-size:12.5px; color:var(--muted); line-height:1.7; text-align:center}
+.logActs{display:flex; gap:8px; margin-top:11px}
+.logActs button{
+  flex:1; appearance:none; border:1px solid var(--line); background:var(--card-2); color:var(--ink);
+  font-family:"M PLUS 1",sans-serif; font-size:12.5px; font-weight:700; padding:9px 6px; border-radius:9px; cursor:pointer;
+}
+.logActs button:active{background:var(--sunk)}
+.logActs button:focus-visible{outline:2px solid var(--lat); outline-offset:1px}
+.logActs button.danger{color:var(--sens)}
+.logHint{margin:9px 0 0; font-size:11px; color:var(--faint); line-height:1.7}
 
 .stick{
   position:fixed; left:0; right:0; bottom:0; z-index:20;
@@ -285,6 +354,21 @@ footer{margin-top:22px; font-size:11.5px; color:var(--faint); line-height:1.8}
       <button type="button" id="reset">初期値に戻す</button>
     </div>
   </div>
+
+  <section class="blk" id="logBlk">
+    <div class="hd"><span class="tag">LOG</span><span class="ttl">計算履歴</span><span class="note" id="logCount"></span></div>
+    <div class="saverow">
+      <div class="inp"><input id="logLabel" type="text" maxlength="40" placeholder="現場名・部屋名（任意）" autocomplete="off"></div>
+      <button type="button" id="logSave">保存</button>
+    </div>
+    <ul class="log" id="logList"></ul>
+    <p class="logEmpty" id="logEmpty">まだ履歴がありません。測定するたびに「保存」を押すと、ここに積み上がります。<br>履歴はこの端末のブラウザにだけ残ります。</p>
+    <div class="logActs">
+      <button type="button" id="logCopy">全件コピー</button>
+      <button type="button" id="logClear" class="danger">全消去</button>
+    </div>
+    <p class="logHint" id="logHint">履歴をタップすると、その条件を入力欄に呼び戻せます。「全件コピー」はExcelにそのまま貼れる形式（TSV）です。保存先はこの端末のブラウザだけなので、機種変更では引き継がれません。</p>
+  </section>
 
   <details>
     <summary>詳細設定（大気圧・風量の状態基準）</summary>
@@ -589,12 +673,84 @@ function calc(){
     (cool?"除湿量 ":"加湿・除湿量 ")+f(Math.abs(drain),2)+" L/h",
     "条件：大気圧 "+f(S.pres,1)+" kPa ／ "+(S.basis==="sa"?"吹出":"吸込")+"基準"
   ].join("\n");
+
+  /* 履歴保存用のスナップショット */
+  window.__snap={ in:JSON.parse(JSON.stringify(S)), base:baseFlow(), flow:flow,
+    QT:QT, QS:QS, QL:QL, shf:shf, drain:drain, kw:(S.src==="model"?d.kw:null) };
+}
+
+/* ---------- 計算履歴 ---------- */
+var LKEY="acheat.log.v1", LMAX=200, LOG=[];
+try{ var lj=JSON.parse(localStorage.getItem(LKEY)||"[]"); if(Array.isArray(lj)) LOG=lj; }catch(e){}
+function logSave(){ try{ localStorage.setItem(LKEY,JSON.stringify(LOG)); }catch(e){} }
+
+function stamp(d){
+  function p(n){ return (n<10?"0":"")+n; }
+  return d.getFullYear()+"/"+p(d.getMonth()+1)+"/"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes());
+}
+function entrySub(e){
+  var s=e.in;
+  return (s.src==="model" ? s.model+" 風量"+s.step : "直接入力")
+    +" ／ "+e.base.toFixed(1)+"×"+s.ratio+"% = "+f(e.flow,1)+" m³/min"
+    +" ／ 吸込 "+f(s.t1,1)+"℃ "+s.rh1+"% → 吹出 "+f(s.t2,1)+"℃ "+s.rh2+"%";
+}
+function drawLog(){
+  var list=$("logList"), i;
+  list.replaceChildren();
+  $("logCount").textContent = LOG.length ? LOG.length+"件" : "";
+  $("logEmpty").hidden = LOG.length>0;
+  $("logHint").hidden = LOG.length===0;
+  $("logCopy").disabled = $("logClear").disabled = LOG.length===0;
+  for(i=0;i<LOG.length;i++){
+    (function(e){
+      var li=document.createElement("li"); li.className="ent";
+      var main=document.createElement("button");
+      main.type="button"; main.className="entMain";
+      main.title="タップすると、この条件を入力欄に呼び戻します";
+      var cool=e.in.mode==="cool";
+      main.innerHTML=
+        '<span class="entTop"><span class="entLab"></span><span class="entTime">'+e.ts+'</span></span>'
+        +'<span class="entMid"><span class="entQ">'+f(e.QT,2)+'</span><span class="entU">kW</span>'
+        +'<span class="entShf">SHF '+(isFinite(e.shf)?f(e.shf,2):"—")+'</span>'
+        +'<span class="entMode '+(cool?"cool":"heat")+'">'+(cool?"冷房":"暖房")+'</span></span>'
+        +'<span class="entSub"></span>';
+      main.querySelector(".entLab").textContent = e.label || "（無題）";
+      main.querySelector(".entSub").textContent = entrySub(e);
+      main.onclick=function(){ restore(e); };
+      var del=document.createElement("button");
+      del.type="button"; del.className="entDel"; del.setAttribute("aria-label","この履歴を削除"); del.textContent="×";
+      del.onclick=function(){
+        LOG=LOG.filter(function(x){ return x.id!==e.id; });
+        logSave(); drawLog();
+      };
+      li.appendChild(main); li.appendChild(del); list.appendChild(li);
+    })(LOG[i]);
+  }
+}
+function restore(e){
+  var k;
+  for(k in DEF) if(k in e.in) S[k]=e.in[k];
+  save(); syncInputs(); calc();
+  $("logLabel").value = e.label || "";
+  window.scrollTo({top:0, behavior:"smooth"});
+  flash($("logSave"), "呼び戻しました");
+}
+function flash(btn, msg){
+  var old=btn.dataset.label||btn.textContent;
+  btn.dataset.label=old; btn.textContent=msg;
+  setTimeout(function(){ btn.textContent=btn.dataset.label; },1600);
 }
 
 /* ---------- 初期化 ---------- */
 function syncPanes(){
   $("pane-model").hidden = S.src!=="model";
   $("pane-manual").hidden = S.src!=="manual";
+}
+function syncInputs(){                             /* 状態Sを全入力欄へ反映 */
+  ["manflow","t1","rh1","t2","rh2","pres"].forEach(function(k){ $(k).value=S[k]; });
+  $("model").value=S.model; $("basis").value=S.basis; $("ratio").value=S.ratio;
+  seg("mode","mode",drawSteps); seg("src","src",syncPanes);
+  syncPanes(); drawSteps();
 }
 seg("mode","mode",drawSteps);
 seg("src","src",syncPanes);
@@ -619,12 +775,58 @@ $("copy").addEventListener("click", function(e){
 });
 $("reset").addEventListener("click", function(){
   for(var k in DEF) S[k]=DEF[k];
-  save();
-  ["manflow","t1","rh1","t2","rh2","pres"].forEach(function(k){ $(k).value=S[k]; });
-  $("model").value=S.model; $("basis").value=S.basis; $("ratio").value=S.ratio;
-  seg("mode","mode",drawSteps); seg("src","src",syncPanes);
-  syncPanes(); drawSteps(); calc();
+  save(); syncInputs(); calc();
 });
+
+/* 履歴のボタン */
+$("logSave").addEventListener("click", function(e){
+  var s=window.__snap;
+  if(!s) return;
+  LOG.unshift({
+    id:String(Date.now())+"-"+Math.round(Math.random()*1e6),
+    ts:stamp(new Date()),
+    label:$("logLabel").value.trim(),
+    in:s.in, base:s.base, flow:s.flow,
+    QT:s.QT, QS:s.QS, QL:s.QL, shf:s.shf, drain:s.drain, kw:s.kw
+  });
+  if(LOG.length>LMAX) LOG.length=LMAX;
+  logSave(); drawLog();
+  $("logLabel").value="";
+  flash(e.currentTarget, "保存OK");
+});
+$("logCopy").addEventListener("click", function(e){
+  var head=["日時","ラベル","モード","機種","風量段階","仕様風量[m³/min]","低下率[%]","実風量[m³/min]",
+            "吸込温度[℃]","吸込湿度[%RH]","吹出温度[℃]","吹出湿度[%RH]",
+            "全熱[kW]","顕熱[kW]","潜熱[kW]","SHF","除湿量[L/h]","大気圧[kPa]","風量基準"];
+  var body=LOG.map(function(e2){
+    var s=e2.in;
+    return [e2.ts, e2.label, (s.mode==="cool"?"冷房":"暖房"),
+      (s.src==="model"?s.model:"直接入力"), (s.src==="model"?s.step:""),
+      e2.base.toFixed(1), s.ratio, f(e2.flow,1),
+      f(s.t1,1), s.rh1, f(s.t2,1), s.rh2,
+      f(e2.QT,2), f(e2.QS,2), f(e2.QL,2), (isFinite(e2.shf)?f(e2.shf,2):""),
+      f(Math.abs(e2.drain),2), f(s.pres,1), (s.basis==="sa"?"吹出":"吸込")].join("\t");
+  });
+  var tsv=[head.join("\t")].concat(body).join("\n");
+  var b=e.currentTarget;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(tsv).then(function(){ flash(b,LOG.length+"件コピーしました"); },
+      function(){ flash(b,"コピーできませんでした"); });
+  }else{ flash(b,"コピーに対応していません"); }
+});
+$("logClear").addEventListener("click", function(e){
+  if(!LOG.length) return;
+  if(!confirm("履歴 "+LOG.length+"件をすべて消します。よろしいですか？")) return;
+  LOG=[]; logSave(); drawLog();
+});
+drawLog();
+
+/* PWA：オフラインで使えるようにする（https のときだけ） */
+if("serviceWorker" in navigator && (location.protocol==="https:" || location.hostname==="localhost")){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
+}
 
 /* 結果カードが画面に入っている間は下部バーを隠す */
 if("IntersectionObserver" in window){
