@@ -109,6 +109,12 @@ select{
 }
 select:focus-visible{border-color:var(--lat); box-shadow:0 0 0 3px var(--lat-bg)}
 
+/* 直接入力の単位切替 */
+.unitrow{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center}
+.segsm{padding:2px; flex-shrink:0}
+.segsm button{font-size:11.5px; font-weight:700; padding:7px 9px; white-space:nowrap}
+.conv{margin:6px 0 0; font-size:11.5px; color:var(--faint)}
+
 .steps{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; margin-top:11px}
 .steps button{
   min-width:0; appearance:none; border:1px solid var(--line); background:var(--card-2); color:var(--muted);
@@ -296,7 +302,7 @@ footer{margin-top:22px; font-size:11.5px; color:var(--faint); line-height:1.8}
   </section>
 
   <section class="blk">
-    <div class="hd"><span class="tag">FLOW</span><span class="ttl">風量</span><span class="note">m³/min</span></div>
+    <div class="hd"><span class="tag">FLOW</span><span class="ttl">風量</span><span class="note">m³/h</span></div>
     <div class="seg" id="src" role="group" aria-label="風量の入力方法">
       <button type="button" data-v="model" aria-pressed="true">機種から選ぶ</button>
       <button type="button" data-v="manual" aria-pressed="false">直接入力</button>
@@ -311,11 +317,16 @@ footer{margin-top:22px; font-size:11.5px; color:var(--faint); line-height:1.8}
     </div>
 
     <div id="pane-manual" hidden>
-      <div class="row" style="grid-template-columns:1fr">
-        <div class="f">
-          <label for="manflow">仕様（カタログ）風量</label>
-          <div class="inp"><input id="manflow" type="number" inputmode="decimal" step="0.1" min="0" value="20.1"><span class="unit">m³/min</span></div>
+      <div class="f" style="margin-top:11px">
+        <label for="manflow">仕様（カタログ）風量</label>
+        <div class="unitrow">
+          <div class="inp"><input id="manflow" type="number" inputmode="decimal" step="1" min="0" value="768"></div>
+          <div class="seg segsm" id="manunit" role="group" aria-label="入力する単位">
+            <button type="button" data-v="h" aria-pressed="true">m³/h</button>
+            <button type="button" data-v="min" aria-pressed="false">m³/min</button>
+          </div>
         </div>
+        <p class="conv" id="manconv"></p>
       </div>
     </div>
 
@@ -325,7 +336,7 @@ footer{margin-top:22px; font-size:11.5px; color:var(--faint); line-height:1.8}
         <div class="v"><span id="ratioV">100</span><span> %</span></div>
       </div>
       <input id="ratio" type="range" min="40" max="110" step="1" value="100" aria-label="風量比率">
-      <div class="out">計算に使う実風量 <b id="flowOut">20.1</b> m³/min<span id="flowBase" style="margin-left:auto"></span></div>
+      <div class="out">計算に使う実風量 <b id="flowOut">768</b> m³/h<span id="flowSub"></span><span id="flowBase" style="margin-left:auto"></span></div>
     </div>
   </section>
 
@@ -414,7 +425,8 @@ footer{margin-top:22px; font-size:11.5px; color:var(--faint); line-height:1.8}
       <div class="fx">h = 1.006·t + x·(2501 + 1.86·t)　[kJ/kg(DA)]</div>
       <div class="fx">v = 287.042·(t+273.15)·(1+1.6079·x) / P　[m³/kg(DA)]</div>
       <h4>2. 風量を乾き空気の質量流量に直す</h4>
-      <div class="fx">G = (風量 × 低下率 ÷ 60) ÷ v　[kg(DA)/s]</div>
+      <div class="fx">G = (風量[m³/h] × 低下率 ÷ 3600) ÷ v　[kg(DA)/s]</div>
+      <p style="margin:6px 0 0">メーカーの仕様表は m³/min 表記なので、内部では m³/min で保持し、表示のときに60倍して m³/h にしています（<code>m³/min × 60 = m³/h</code>）。</p>
       <h4>3. 全熱・顕熱・潜熱に分ける</h4>
       <p>全熱はエンタルピー差そのもの。顕熱と潜熱は、足すと必ず全熱に一致する形に分解しています。</p>
       <div class="fx">Q全 = G × (h₁ − h₂)</div>
@@ -435,6 +447,7 @@ footer{margin-top:22px; font-size:11.5px; color:var(--faint); line-height:1.8}
     <summary>風量段階の読み方（リモコン表示との対応）</summary>
     <div class="dbody">
       <ul>
+        <li><b>単位について。</b>このツールは <b>m³/h</b> を主表示にしていますが、メーカーの仕様表・カタログは <b>m³/min</b> 表記です。突き合わせるときは60で割ってください（例：768 m³/h ＝ 12.8 m³/min）。段階ボタンの数字も m³/h です。</li>
         <li>仕様表に載っているのは <b>強(H)・弱(M)・微(L)</b> の3点だけで、それぞれリモコンの <b>5・3・1</b> に対応します。</li>
         <li><b>2 と 4 は非公表</b>のため、隣り合う段の中間値を推定として使っています（ボタンに「推定」と表示）。</li>
         <li>「自動」「しずか」は風量値が公表されていません。自動運転中の測定は実風量が分からないため、直接入力を推奨します。</li>
@@ -444,7 +457,7 @@ footer{margin-top:22px; font-size:11.5px; color:var(--faint); line-height:1.8}
   </details>
 
   <footer>
-    風量データ出典：ダイキン工業 仕様表（各機種PDF）／取扱説明書 AX・Aシリーズ 3P814678-1 P.16。風量は室内ユニットの値（m³/min）。<br>
+    風量データ出典：ダイキン工業 仕様表（各機種PDF）／取扱説明書 AX・Aシリーズ 3P814678-1 P.16。風量は室内ユニットの値で、出典は m³/min 表記、本ツールは m³/h を主表示（×60）。<br>
     空気の物性は ASHRAE Handbook Fundamentals の湿り空気式に基づきます。本ツールは現場での目安を出すためのもので、メーカーの性能保証値ではありません。
   </footer>
 </div>
@@ -526,7 +539,8 @@ function state(t,rh,P){                           /* P [Pa] */
 
 /* ---------- 状態 ---------- */
 function $(id){ return document.getElementById(id); }
-var DEF={mode:"cool", src:"model", model:"S406ATAP", step:3, manflow:12.8,
+/* 風量は内部で m³/min（仕様表の単位）で保持し、表示は m³/h を主とする */
+var DEF={mode:"cool", src:"model", model:"S406ATAP", step:3, manflow:12.8, manunit:"h",
          ratio:100, t1:27, rh1:50, t2:15, rh2:95, pres:101.3, basis:"sa"};
 var S={}; for(var k in DEF) S[k]=DEF[k];
 var KEY="acheat.v1";
@@ -536,6 +550,9 @@ function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} }
 
 function r1(n){ return Math.round(n*10)/10; }
 function f(n,d){ return isFinite(n)?n.toFixed(d===undefined?2:d):"—"; }
+/* 風量の表示：fh=m³/h（整数）、fm=m³/min（小数1桁）。引数はどちらも m³/min */
+function fh(v){ return isFinite(v)?String(Math.round(v*60)):"—"; }
+function fm(v){ return f(v,1); }
 
 /* ---------- 機種セレクト ---------- */
 (function(){
@@ -572,7 +589,7 @@ function drawSteps(){
     b=document.createElement("button");
     b.type="button";
     b.setAttribute("aria-pressed", String(S.step===i+1));
-    b.innerHTML="<b>"+(i+1)+"</b><i>"+STEPNAME[i]+"</i><i style='opacity:.7'>"+fl[i].toFixed(1)+"</i>";
+    b.innerHTML="<b>"+(i+1)+"</b><i>"+STEPNAME[i]+"</i><i style='opacity:.7'>"+fh(fl[i])+"</i>";
     (function(n){ b.onclick=function(){ S.step=n; save(); drawSteps(); calc(); }; })(i+1);
     box.appendChild(b);
   }
@@ -597,12 +614,32 @@ function bindNum(id, key){
   });
 }
 
+/* 直接入力の風量：内部は m³/min、表示は選んだ単位 */
+function updateConv(){
+  $("manconv").textContent = S.manunit==="h"
+    ? "= "+fm(S.manflow)+" m³/min　（メーカー仕様表は m³/min 表記です）"
+    : "= "+fh(S.manflow)+" m³/h";
+}
+function syncManflow(){                            /* 入力欄そのものを書き換える */
+  var el=$("manflow");
+  el.value = (S.manunit==="h") ? Math.round(S.manflow*60) : Math.round(S.manflow*10)/10;
+  el.step  = (S.manunit==="h") ? "1" : "0.1";
+  updateConv();
+}
+$("manflow").addEventListener("input", function(){
+  var v=parseFloat($("manflow").value);
+  if(!isFinite(v)) return;
+  S.manflow = (S.manunit==="h") ? v/60 : v;        /* 入力中は欄を書き換えない */
+  save(); updateConv(); calc();
+});
+
 /* ---------- 計算・描画 ---------- */
 function calc(){
   var P=S.pres*1000;
-  var flow=baseFlow()*S.ratio/100;                 /* m³/min */
-  $("flowOut").textContent=f(flow,1);
-  $("flowBase").textContent=(S.src==="model"?"仕様 ":"入力 ")+baseFlow().toFixed(1)+" m³/min";
+  var flow=baseFlow()*S.ratio/100;                 /* m³/min（内部の基準単位） */
+  $("flowOut").textContent=fh(flow);
+  $("flowSub").textContent="（"+fm(flow)+" m³/min）";
+  $("flowBase").textContent=(S.src==="model"?"仕様 ":"入力 ")+fh(baseFlow())+" m³/h";
   $("ratioV").textContent=S.ratio;
 
   var cool=S.mode==="cool";
@@ -632,7 +669,7 @@ function calc(){
   var d=modelRow();
   var rated=(S.src==="model"&&cool)?d.kw:null;
   var rows=[
-    ["実風量（低下率反映）", f(flow,1), "m³/min"],
+    ["実風量（低下率反映）", fh(flow), "m³/h（"+fm(flow)+" m³/min）"],
     ["乾き空気の質量流量", f(G*3600,0), "kg/h"],
     ["比エンタルピー <span class='nb'>吸込 h₁</span>", f(a.h,1), "kJ/kg(DA)"],
     ["比エンタルピー <span class='nb'>吹出 h₂</span>", f(b.h,1), "kJ/kg(DA)"],
@@ -682,7 +719,7 @@ function calc(){
   window.__txt=[
     "エアコン処理熱量 推定（"+(cool?"冷房":"暖房")+"）",
     (S.src==="model" ? "機種 "+S.model+"（"+d.y+"・"+d.kw.toFixed(1)+"kWクラス）／風量段階 "+S.step : "風量 直接入力"),
-    "風量 "+baseFlow().toFixed(1)+" m³/min × "+S.ratio+"% = "+f(flow,1)+" m³/min",
+    "風量 "+fh(baseFlow())+" m³/h × "+S.ratio+"% = "+fh(flow)+" m³/h（"+fm(flow)+" m³/min）",
     "吸込 "+f(S.t1,1)+"℃ "+S.rh1+"%RH（x="+f(a.x*1000,1)+" g/kg, h="+f(a.h,1)+" kJ/kg）",
     "吹出 "+f(S.t2,1)+"℃ "+S.rh2+"%RH（x="+f(b.x*1000,1)+" g/kg, h="+f(b.h,1)+" kJ/kg）",
     "全熱 "+f(QT,2)+" kW ／ 顕熱 "+f(QS,2)+" kW ／ 潜熱 "+f(QL,2)+" kW ／ SHF "+(isFinite(shf)?f(shf,2):"—"),
@@ -707,7 +744,7 @@ function stamp(d){
 function entrySub(e){
   var s=e.in;
   return (s.src==="model" ? s.model+" 風量"+s.step : "直接入力")
-    +" ／ "+e.base.toFixed(1)+"×"+s.ratio+"% = "+f(e.flow,1)+" m³/min"
+    +" ／ "+fh(e.base)+"×"+s.ratio+"% = "+fh(e.flow)+" m³/h"
     +" ／ 吸込 "+f(s.t1,1)+"℃ "+s.rh1+"% → 吹出 "+f(s.t2,1)+"℃ "+s.rh2+"%";
 }
 function drawLog(){
@@ -763,21 +800,22 @@ function syncPanes(){
   $("pane-manual").hidden = S.src!=="manual";
 }
 function syncInputs(){                             /* 状態Sを全入力欄へ反映 */
-  ["manflow","t1","rh1","t2","rh2","pres"].forEach(function(k){ $(k).value=S[k]; });
+  ["t1","rh1","t2","rh2","pres"].forEach(function(k){ $(k).value=S[k]; });
   $("model").value=S.model; $("basis").value=S.basis; $("ratio").value=S.ratio;
-  seg("mode","mode",drawSteps); seg("src","src",syncPanes);
-  syncPanes(); drawSteps();
+  seg("mode","mode",drawSteps); seg("src","src",syncPanes); seg("manunit","manunit",syncManflow);
+  syncPanes(); syncManflow(); drawSteps();
 }
 seg("mode","mode",drawSteps);
 seg("src","src",syncPanes);
-syncPanes();
+seg("manunit","manunit",syncManflow);
+syncPanes(); syncManflow();
 $("model").value=S.model;
 $("model").addEventListener("change", function(){ S.model=$("model").value; save(); drawSteps(); calc(); });
 $("basis").value=S.basis;
 $("basis").addEventListener("change", function(){ S.basis=$("basis").value; save(); calc(); });
 $("ratio").value=S.ratio;
 $("ratio").addEventListener("input", function(){ S.ratio=parseInt($("ratio").value,10); save(); calc(); });
-["manflow","t1","rh1","t2","rh2","pres"].forEach(function(k){ bindNum(k,k); });
+["t1","rh1","t2","rh2","pres"].forEach(function(k){ bindNum(k,k); });
 drawSteps();
 calc();
 
@@ -811,14 +849,14 @@ $("logSave").addEventListener("click", function(e){
   flash(e.currentTarget, "保存OK");
 });
 $("logCopy").addEventListener("click", function(e){
-  var head=["日時","ラベル","モード","機種","風量段階","仕様風量[m³/min]","低下率[%]","実風量[m³/min]",
+  var head=["日時","ラベル","モード","機種","風量段階","仕様風量[m³/h]","低下率[%]","実風量[m³/h]","実風量[m³/min]",
             "吸込温度[℃]","吸込湿度[%RH]","吹出温度[℃]","吹出湿度[%RH]",
             "全熱[kW]","顕熱[kW]","潜熱[kW]","SHF","除湿量[L/h]","大気圧[kPa]","風量基準"];
   var body=LOG.map(function(e2){
     var s=e2.in;
     return [e2.ts, e2.label, (s.mode==="cool"?"冷房":"暖房"),
       (s.src==="model"?s.model:"直接入力"), (s.src==="model"?s.step:""),
-      e2.base.toFixed(1), s.ratio, f(e2.flow,1),
+      fh(e2.base), s.ratio, fh(e2.flow), fm(e2.flow),
       f(s.t1,1), s.rh1, f(s.t2,1), s.rh2,
       f(e2.QT,2), f(e2.QS,2), f(e2.QL,2), (isFinite(e2.shf)?f(e2.shf,2):""),
       f(Math.abs(e2.drain),2), f(s.pres,1), (s.basis==="sa"?"吹出":"吸込")].join("\t");
