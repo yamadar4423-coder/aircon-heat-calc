@@ -420,7 +420,7 @@ footer{margin-top:22px; font-size:11.5px; color:var(--faint); line-height:1.8}
     <summary>計算のしくみ（式と考え方）</summary>
     <div class="dbody">
       <h4>1. 温度と湿度から湿り空気の状態を出す</h4>
-      <p>飽和水蒸気圧 <code>pws(t)</code> はASHRAEの式（水面上／氷面上）で求め、水蒸気分圧 <code>pw = RH × pws</code> から絶対湿度・比エンタルピー・比容積を計算します。</p>
+      <p>飽和水蒸気圧 <code>pws(t)</code> はASHRAEの式（水面上／氷面上）で求め、水蒸気分圧 <code>pw = RH × pws</code> から重量絶対湿度・比エンタルピー・比容積を計算します。</p>
       <div class="fx">x = 0.621945 × pw / (P − pw)　[kg/kg(DA)]</div>
       <div class="fx">h = 1.006·t + x·(2501 + 1.86·t)　[kJ/kg(DA)]</div>
       <div class="fx">v = 287.042·(t+273.15)·(1+1.6079·x) / P　[m³/kg(DA)]</div>
@@ -674,8 +674,8 @@ function calc(){
     ["比エンタルピー <span class='nb'>吸込 h₁</span>", f(a.h,1), "kJ/kg(DA)"],
     ["比エンタルピー <span class='nb'>吹出 h₂</span>", f(b.h,1), "kJ/kg(DA)"],
     ["<span class='nb'>エンタルピー差 Δh</span>", f(Math.abs(a.h-b.h),1), "kJ/kg(DA)"],
-    ["絶対湿度 <span class='nb'>吸込 x₁</span>", f(a.x*1000,1), "g/kg(DA)"],
-    ["絶対湿度 <span class='nb'>吹出 x₂</span>", f(b.x*1000,1), "g/kg(DA)"],
+    ["重量絶対湿度 <span class='nb'>吸込 x₁</span>", f(a.x*1000,1), "g/kg(DA)"],
+    ["重量絶対湿度 <span class='nb'>吹出 x₂</span>", f(b.x*1000,1), "g/kg(DA)"],
     ["露点 <span class='nb'>吸込 / 吹出</span>", f(a.td,1)+" / "+f(b.td,1), "℃"],
     ["湿球 <span class='nb'>吸込 / 吹出</span>", f(a.tw,1)+" / "+f(b.tw,1), "℃"],
     ["温度差 Δt", f(Math.abs(a.t-b.t),1), "K"],
@@ -699,9 +699,9 @@ function calc(){
   if(cool&&S.rh2>=98)
     M.push(["info","吹出湿度が飽和に近い設定です。実測の吹出は結露水で湿度計が振り切れやすく、潜熱の精度は低めに見てください。"]);
   if(cool&&b.x>a.x)
-    M.push(["warn","<b>吹出の絶対湿度が吸込より高くなっています。</b>冷房では通常ありえません。湿度の測定値を確認してください（潜熱がマイナス表示になります）。"]);
+    M.push(["warn","<b>吹出の重量絶対湿度が吸込より高くなっています。</b>冷房では通常ありえません。湿度の測定値を確認してください（潜熱がマイナス表示になります）。"]);
   if(!cool&&Math.abs(a.x-b.x)*1000>0.6)
-    M.push(["info","暖房で絶対湿度が "+f(Math.abs(a.x-b.x)*1000,1)+" g/kg 変化しています。加湿機能がなければ湿度計の誤差です。顕熱を主に見てください。"]);
+    M.push(["info","暖房で重量絶対湿度が "+f(Math.abs(a.x-b.x)*1000,1)+" g/kg 変化しています。加湿機能がなければ湿度計の誤差です。顕熱を主に見てください。"]);
   if(S.ratio!==100)
     M.push(["info","風量を仕様値の <b>"+S.ratio+"%</b> として計算しています。処理熱量は風量にほぼ比例するので、この設定がそのまま結果の幅になります。"]);
   if(S.src==="model"&&(S.step===2||S.step===4))

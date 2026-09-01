@@ -1,6 +1,6 @@
 /* 現場エアコン熱量メーター — オフライン用サービスワーカー
    index.html を変更したら VERSION を上げること（古いキャッシュが破棄され、更新が届きます）。 */
-const VERSION = "v3";
+const VERSION = "v4";
 const SHELL = "shell-" + VERSION;
 const FONTS = "fonts-" + VERSION;
 
