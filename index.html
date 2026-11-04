@@ -179,6 +179,7 @@ input[type=range]{width:100%; margin:6px 0 0; accent-color:var(--sens); height:2
 .msg.warn{background:var(--warn-bg); border-color:var(--warn-line); color:var(--warn)}
 .msg.info{background:var(--card-2); border-color:var(--line-soft); color:var(--muted)}
 .msg b{font-weight:700}
+button:disabled{opacity:.4; cursor:not-allowed}
 .msg .ic{font-family:"Roboto Condensed",monospace; font-weight:700; flex-shrink:0}
 
 .acts{display:flex; gap:8px; padding:0 16px 16px}
@@ -606,11 +607,37 @@ function seg(id, key, after){
   }
 }
 
+/* 空欄の欄。前の値で計算を続けると、画面の入力と結果が食い違うので計算しない */
+var blank={};
+var BLANK_LABEL={t1:"吸込の温度", rh1:"吸込の湿度", t2:"吹出の温度", rh2:"吹出の湿度", pres:"大気圧", manflow:"風量"};
+var PRES_MIN=60, PRES_MAX=110;                     /* kPa。hPa との取り違えを止めるための、このツールの範囲 */
+function inputProblems(){
+  var M=[], k;
+  for(k in blank){
+    if(k==="manflow"&&S.src!=="manual") continue;
+    M.push(BLANK_LABEL[k]+"が空欄です。入力すると計算します。");
+  }
+  if(!blank.pres&&!(S.pres>=PRES_MIN&&S.pres<=PRES_MAX))
+    M.push("大気圧は "+PRES_MIN+"〜"+PRES_MAX+" kPa の範囲で入力してください（標準は 101.3 kPa。1013 hPa = 101.3 kPa）。");
+  return M;
+}
+function showInvalid(M){
+  ["qTotal","qS","qL","shf","sN","sS","sL","sF"].forEach(function(id){ $(id).textContent="—"; });
+  $("barS").style.width="0%"; $("barL").style.width="0%";
+  $("tbl").innerHTML="";
+  $("msgs").innerHTML=M.map(function(m){
+    return '<div class="msg warn"><span class="ic">！</span><span>'+m+'</span></div>';
+  }).join("");
+  window.__txt=null; window.__snap=null;
+  $("copy").disabled=true; $("logSave").disabled=true;
+}
 function bindNum(id, key){
   var el=$(id); el.value=S[key];
   el.addEventListener("input", function(){
     var v=parseFloat(el.value);
-    if(isFinite(v)){ S[key]=v; save(); calc(); }
+    if(isFinite(v)){ S[key]=v; delete blank[key]; save(); }
+    else blank[key]=true;
+    calc();
   });
 }
 
@@ -628,7 +655,8 @@ function syncManflow(){                            /* 入力欄そのものを�
 }
 $("manflow").addEventListener("input", function(){
   var v=parseFloat($("manflow").value);
-  if(!isFinite(v)) return;
+  if(!isFinite(v)){ blank.manflow=true; calc(); return; }
+  delete blank.manflow;
   S.manflow = (S.manunit==="h") ? v/60 : v;        /* 入力中は欄を書き換えない */
   save(); updateConv(); calc();
 });
@@ -646,6 +674,13 @@ function calc(){
   $("modePill").textContent=cool?"冷房":"暖房";
   $("modePill").className="pill "+(cool?"cool":"heat");
   $("resLab").textContent=(cool?"TOTAL COOLING":"TOTAL HEATING")+"／全熱処理量";
+
+  if(blank.manflow&&S.src==="manual"){
+    $("flowOut").textContent="—"; $("flowSub").textContent=""; $("flowBase").textContent="";
+  }
+  var bad=inputProblems();
+  if(bad.length){ showInvalid(bad); return; }
+  $("copy").disabled=false; $("logSave").disabled=false;
 
   var a=state(S.t1,S.rh1,P), b=state(S.t2,S.rh2,P);
   var v=(S.basis==="sa"?b.v:a.v);
@@ -800,6 +835,7 @@ function syncPanes(){
   $("pane-manual").hidden = S.src!=="manual";
 }
 function syncInputs(){                             /* 状態Sを全入力欄へ反映 */
+  blank={};
   ["t1","rh1","t2","rh2","pres"].forEach(function(k){ $(k).value=S[k]; });
   $("model").value=S.model; $("basis").value=S.basis; $("ratio").value=S.ratio;
   seg("mode","mode",drawSteps); seg("src","src",syncPanes); seg("manunit","manunit",syncManflow);
