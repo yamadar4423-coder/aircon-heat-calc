@@ -321,7 +321,7 @@ footer{margin-top:22px; font-size:11.5px; color:var(--faint); line-height:1.8}
       <div class="f" style="margin-top:11px">
         <label for="manflow">仕様（カタログ）風量</label>
         <div class="unitrow">
-          <div class="inp"><input id="manflow" type="number" inputmode="decimal" step="1" min="0" value="768"></div>
+          <div class="inp"><input id="manflow" type="text" data-calc autocomplete="off" value="768"></div>
           <div class="seg segsm" id="manunit" role="group" aria-label="入力する単位">
             <button type="button" data-v="h" aria-pressed="true">m³/h</button>
             <button type="button" data-v="min" aria-pressed="false">m³/min</button>
@@ -345,9 +345,9 @@ footer{margin-top:22px; font-size:11.5px; color:var(--faint); line-height:1.8}
     <div class="hd"><span class="tag">RA</span><span class="ttl">吸込空気（室内側の戻り）</span></div>
     <div class="row">
       <div class="f"><label for="t1">乾球温度</label>
-        <div class="inp"><input id="t1" type="number" inputmode="decimal" step="0.1" value="27.0"><span class="unit">℃</span></div></div>
+        <div class="inp"><input id="t1" type="text" data-calc autocomplete="off" value="27.0"><span class="unit">℃</span></div></div>
       <div class="f"><label for="rh1">相対湿度</label>
-        <div class="inp"><input id="rh1" type="number" inputmode="decimal" step="1" min="0" max="100" value="50"><span class="unit">%RH</span></div></div>
+        <div class="inp"><input id="rh1" type="text" data-calc autocomplete="off" value="50"><span class="unit">%RH</span></div></div>
     </div>
   </section>
 
@@ -355,9 +355,9 @@ footer{margin-top:22px; font-size:11.5px; color:var(--faint); line-height:1.8}
     <div class="hd"><span class="tag">SA</span><span class="ttl">吹出空気（吹出口）</span></div>
     <div class="row">
       <div class="f"><label for="t2">乾球温度</label>
-        <div class="inp"><input id="t2" type="number" inputmode="decimal" step="0.1" value="15.0"><span class="unit">℃</span></div></div>
+        <div class="inp"><input id="t2" type="text" data-calc autocomplete="off" value="15.0"><span class="unit">℃</span></div></div>
       <div class="f"><label for="rh2">相対湿度</label>
-        <div class="inp"><input id="rh2" type="number" inputmode="decimal" step="1" min="0" max="100" value="95"><span class="unit">%RH</span></div></div>
+        <div class="inp"><input id="rh2" type="text" data-calc autocomplete="off" value="95"><span class="unit">%RH</span></div></div>
     </div>
   </section>
 
@@ -403,7 +403,7 @@ footer{margin-top:22px; font-size:11.5px; color:var(--faint); line-height:1.8}
     <div class="dbody">
       <div class="row" style="margin-top:0">
         <div class="f"><label for="pres">大気圧</label>
-          <div class="inp"><input id="pres" type="number" inputmode="decimal" step="0.1" value="101.3"><span class="unit">kPa</span></div></div>
+          <div class="inp"><input id="pres" type="text" data-calc autocomplete="off" value="101.3"><span class="unit">kPa</span></div></div>
         <div class="f"><label for="basis">風量の状態基準</label>
           <select id="basis">
             <option value="sa">吹出（SA）基準</option>
@@ -471,6 +471,139 @@ footer{margin-top:22px; font-size:11.5px; color:var(--faint); line-height:1.8}
   <div class="r">顕熱 <b id="sS">—</b> ／ 潜熱 <b id="sL">—</b> ／ SHF <b id="sF">—</b></div>
 </div>
 
+<script>
+/* 入力の手助け（2026-11-12 本人「入力欄をタブで移動したい」「数値入力欄は計算式でもOKに」・全部の道具に共通）
+ *   1. 数値の欄に計算式（例 1820*6+1820*5、(10.92+9.1)*2、1,820×3）を入れると、確定したときに答えの数字に置き換える
+ *      数値の欄＝ data-calc を付けた欄・type="number" の欄・window.INPUT_ASSIST_SEL（道具ごとの選び方）に当たる欄
+ *      使える記号：+ - * / × ÷ ( ) と全角の同じ記号・桁区切りのカンマ。式でない（文字を含む）ときは何もしない
+ *   2. 入力の確定で画面が描き直されても、Tab・Shift+Tab・クリックで移ろうとした先の欄へカーソルを戻す
+ *      （描き直しで行き先の欄が作り直され、カーソルが消えていた）。移った欄は中身を選んだ状態にして、すぐ打ち直せる
+ *   3. ファイル（保存データの JSON など）を画面のどこへ落としても読み込む（下の 3.）
+ *   組み込むときの決まり：欄の横の補助ボタン（−・＋・×など）は tabindex="-1" にして、Tab が入力欄だけを順に移るようにする（11/12）
+ *   道具の画面の処理には手を入れない。document に先回りの受け口（capture）を付けるだけ
+ */
+(function(){
+  "use strict";
+  if(window.InputAssist) return;
+
+  /* ---- 1. 計算式 ---- */
+  var OPS=/[+\-*/()]/;
+  function norm(s){
+    return String(s).normalize("NFKC").replace(/[×✕xX]/g,"*").replace(/÷/g,"/").replace(/[−–—ー]/g,"-").replace(/\s+/g,"");
+  }
+  // 数字・小数点・四則・括弧だけを読む小さな読み取り（eval は使わない）
+  function calc(src){
+    var s=norm(src); if(!s||/[^0-9.,+\-*/()]/.test(s)) return null;
+    s=s.replace(/(\d),(?=\d{3}(\D|$))/g,"$1");          // 桁区切りのカンマ
+    if(/,/.test(s)) return null;
+    var i=0;
+    function num(){ var m=/^\d*\.?\d+|^\d+\.?/.exec(s.slice(i)); if(!m) throw 0; i+=m[0].length; return parseFloat(m[0]); }
+    function fac(){ var c=s[i];
+      if(c==="+"){ i++; return fac(); } if(c==="-"){ i++; return -fac(); }
+      if(c==="("){ i++; var v=add(); if(s[i]!==")") throw 0; i++; return v; }
+      return num(); }
+    function mul(){ var v=fac(); while(s[i]==="*"||s[i]==="/"){ var o=s[i++], w=fac(); v=o==="*"?v*w:v/w; } return v; }
+    function add(){ var v=mul(); while(s[i]==="+"||s[i]==="-"){ var o=s[i++], w=mul(); v=o==="+"?v+w:v-w; } return v; }
+    try{ var v=add(); if(i!==s.length||!isFinite(v)) return null; return +v.toPrecision(12); }catch(e){ return null; }
+  }
+  function isNumField(el){
+    if(!el||el.tagName!=="INPUT") return false;
+    if(el.hasAttribute("data-calc")||el.type==="number") return true;
+    var sel=window.INPUT_ASSIST_SEL; return !!(sel&&el.matches&&el.matches(sel));
+  }
+  // 式なら答えに置き換える。置き換えたら true
+  function apply(el){
+    if(!isNumField(el)) return false;
+    var raw=el.value, s=norm(raw);
+    if(!OPS.test(s.replace(/^[+\-]/,""))) return false;      // 先頭の符号だけは式ではない
+    var v=calc(raw); if(v===null) return false;
+    el.value=String(v);
+    // 入力のたび（input）に値を読む・保存する道具にも答えを渡す（11/12 気密・全館空調の作業員の指摘）
+    el.dispatchEvent(new Event("input",{bubbles:true}));
+    return true;
+  }
+  document.addEventListener("change",function(e){ apply(e.target); },true);
+  // Enter で確定する欄（keydown で値を読む道具）にも効かせる
+  document.addEventListener("keydown",function(e){ if(e.key==="Enter"&&!e.isComposing) apply(e.target); },true);
+
+  /* ---- 2. 描き直しのあとの行き先 ---- */
+  var FOC='input:not([type=hidden]):not([disabled]),select:not([disabled]),textarea:not([disabled]),button:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])';
+  var TEXTY=/^(text|search|number|tel|url|email|password|)$/;
+  function visible(el){ return !!(el.offsetWidth||el.offsetHeight||el.getClientRects().length)&&getComputedStyle(el).visibility!=="hidden"; }
+  function focusables(){ return Array.prototype.filter.call(document.querySelectorAll(FOC),function(el){ return el.tabIndex>=0&&visible(el)&&!el.closest("[hidden],[inert]"); }); }
+  // 欄の名札：タグ・id・name・type・data-*（描き直しても同じ欄なら同じ）と、同じ名札の中の何番目か
+  function tag(el){
+    var a=[el.tagName,el.id,el.name||"",el.getAttribute("type")||""];
+    Array.prototype.forEach.call(el.attributes,function(x){ if(x.name.indexOf("data-")===0) a.push(x.name+"="+x.value); });
+    return a.join("|");
+  }
+  function sig(el){ var t=tag(el), n=0, all=document.querySelectorAll(el.tagName);
+    for(var k=0;k<all.length;k++){ if(all[k]===el) break; if(tag(all[k])===t) n++; }
+    return {t:t,n:n,tagName:el.tagName}; }
+  function find(g){ var all=document.querySelectorAll(g.tagName), n=0;
+    for(var k=0;k<all.length;k++){ if(tag(all[k])===g.t){ if(n===g.n) return all[k]; n++; } }
+    return null; }
+  var want=null;
+  function restore(){
+    var g=want; want=null; if(!g) return;
+    var ae=document.activeElement;
+    if(ae&&ae!==document.body&&ae.isConnected&&tag(ae)===g.t) return;   // 描き直しがなく、ふつうに移れた
+    if(ae&&ae!==document.body&&ae.isConnected&&ae!==g.from) return;      // 道具が自分で別の欄へ移した
+    var el=find(g); if(!el) return;
+    el.focus({preventScroll:false});
+    if(el.tagName==="INPUT"&&TEXTY.test(el.type)&&el.select) el.select();
+  }
+  document.addEventListener("keydown",function(e){
+    if(e.key!=="Tab"||e.altKey||e.ctrlKey||e.metaKey) return;
+    var t=e.target; if(!t||!/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+    var L=focusables(), i=L.indexOf(t); if(i<0) return;
+    var nx=L[i+(e.shiftKey?-1:1)]; if(!nx) return;
+    want=sig(nx); want.from=t;
+    setTimeout(restore,0);
+  },true);
+  document.addEventListener("pointerdown",function(e){
+    var t=e.target&&e.target.closest&&e.target.closest("input,select,textarea"); if(!t) return;
+    var ae=document.activeElement; if(!ae||ae===t||!/^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName)) return;
+    want=sig(t); want.from=ae;
+    setTimeout(restore,0);
+  },true);
+
+  /* ---- 3. ファイルをドラッグで入れる（2026-11-12 本人「JSON などをドラッグで入れられるように」・全部の道具に共通） ----
+   *   道具は InputAssist.fileDrop({input:"#ファイルの欄", accept:".json", label:"…"}) を1回呼ぶ。
+   *   画面のどこに落としても、その欄で選んだのと同じ読み込みになる（道具の読み込みの処理はそのまま使う）。
+   *   handle:function(files){…} を渡すと欄を使わずに受け取る。登録がなくても、落としたファイルでページが開き直る
+   *   （入力中のデータが消える）のは防ぐ。道具の中のドラッグ（行・タグの移動）はファイルではないので触らない */
+  var DROP=null, ov=null, depth=0;
+  function hasFiles(e){ var t=e.dataTransfer&&e.dataTransfer.types; return !!t&&Array.prototype.indexOf.call(t,"Files")>=0; }
+  function inFileInput(e){ return !!(e.target&&e.target.closest&&e.target.closest('input[type=file]')); }
+  function overlay(on){
+    if(!ov){ ov=document.createElement("div"); ov.setAttribute("data-ia-drop","");
+      ov.style.cssText="position:fixed;inset:0;z-index:2147483646;display:none;align-items:center;justify-content:center;padding:24px;text-align:center;background:rgba(20,30,40,.55);color:#fff;font:600 20px/1.6 system-ui,sans-serif;pointer-events:none;outline:4px dashed rgba(255,255,255,.8);outline-offset:-16px";
+      document.body.appendChild(ov); }
+    ov.textContent=(DROP&&DROP.label)||"ここに落とすと読み込みます"; ov.style.display=on?"flex":"none";
+  }
+  function okFile(f){ var a=DROP&&DROP.accept; if(!a) return true;
+    return a.split(",").some(function(x){ x=x.trim().toLowerCase(); return x.charAt(0)==="."?f.name.toLowerCase().slice(-x.length)===x:(x.slice(-2)==="/*"?f.type.indexOf(x.slice(0,-1))===0:f.type===x); }); }
+  function say(m){ if(DROP&&DROP.reject) DROP.reject(m); else window.alert(m); }
+  document.addEventListener("dragenter",function(e){ if(!hasFiles(e)||!DROP) return; depth++; overlay(true); },true);
+  document.addEventListener("dragleave",function(e){ if(!hasFiles(e)||!DROP) return; if(--depth<=0){ depth=0; overlay(false); } },true);
+  document.addEventListener("dragover",function(e){ if(!hasFiles(e)||inFileInput(e)) return; e.preventDefault(); if(e.dataTransfer) e.dataTransfer.dropEffect=DROP?"copy":"none"; },true);
+  document.addEventListener("drop",function(e){
+    if(!hasFiles(e)||inFileInput(e)) return;
+    e.preventDefault(); e.stopPropagation(); depth=0; overlay(false);
+    if(!DROP) return;
+    var fs=Array.prototype.slice.call(e.dataTransfer.files||[]), ok=fs.filter(okFile);
+    if(!ok.length){ say("このファイルは読み込めません（"+(DROP.accept||"")+" のファイルを落としてください）"); return; }
+    if(DROP.handle){ DROP.handle(ok); return; }
+    var inp=typeof DROP.input==="string"?document.querySelector(DROP.input):DROP.input; if(!inp) return;
+    var dt=new DataTransfer(); (inp.multiple?ok:ok.slice(0,1)).forEach(function(f){ dt.items.add(f); });
+    inp.files=dt.files; inp.dispatchEvent(new Event("change",{bubbles:true}));
+  },true);
+  function fileDrop(o){ DROP=o||null; }
+
+  window.InputAssist={calc:calc,apply:apply,fileDrop:fileDrop};
+})();
+</script>
 <script>
 "use strict";
 /* ---------- 風量データ：ダイキン AX/A シリーズ 壁掛形（[冷房, 暖房] m³/min） ---------- */
